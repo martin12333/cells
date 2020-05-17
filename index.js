@@ -218,6 +218,7 @@ CA.prototype.step = function() {
 }
 
 CA.prototype.draw = function(afterStep) {
+
   var gl = this.igloo.gl;
   if(this.hist && afterStep) {
     this.frameBuffer.attach(this.tex_temp);
@@ -241,8 +242,9 @@ CA.prototype.draw = function(afterStep) {
     this.tex_hist.bind(0);  
   else
     this.tex_curr.bind(0);
-    
-  gl.viewport(0, 0, this.viewsize[0], this.viewsize[1]);
+  // make sure client size == actual size
+  resizeCanvasToDisplaySize(this.canvas);
+  gl.viewport(0, 0, this.canvas.width, this.canvas.height);
   this.program_copy.use()
     .attrib('a_position', this.buffer, 2)
     .uniformi('state', 0)
@@ -283,8 +285,12 @@ CA.prototype.pokeSqr = function(x, y, state, r) {
   r = r || 1
 
   // shift so the mouse will be at the center of a drawn sqare
-  x = mod(Math.round(x) / this.scale + this.offset[0] - r + 1, this.statesize[0]);
-  y = mod(Math.round(y) / this.scale + this.offset[1] - r + 1, this.statesize[1]);
+  x = mod(x / this.scale + this.offset[0] - r + 1, this.statesize[0]);
+  y = mod(y / this.scale + this.offset[1] - r + 1, this.statesize[1]);
+
+  x = Math.round(x)
+  y = Math.round(y)
+
   this.poke(x, y, state, 2*r - 1, 2*r - 1)
   // this.poke(x,y,state,2*r - 1, 2*r - 1)
 }
@@ -360,8 +366,7 @@ function main() {
   
   var ca = new CA(canvas, 1)
   console.log(ca)
-  resizeCanvasToDisplaySize(canvas)
-
+  
   canvas.addEventListener('mousedown', (event) => {
     mousePressed = event.which
     var pos = ca.getMousePos(event);
@@ -382,7 +387,9 @@ function main() {
     var pos = ca.getMousePos(event);
     if(mousePressed == 1) {      
       var diag_dist = Math.max(Math.abs(pos[0]-lastPos[0]), Math.abs(pos[1]-lastPos[1]))
-      for (var step = 0; step <= diag_dist; step+=drawR) {
+      // bigger radius ==> bigger steps
+      // also if we are zoom (small scale) steps should be smaller
+      for (var step = 0; step <= diag_dist; step += drawR * ca.scale) {
         var t = diag_dist == 0? 0.0 : step / diag_dist;
         var point = [
           lastPos[0] + t * (pos[0] - lastPos[0]),
@@ -397,8 +404,8 @@ function main() {
       var oldStatePos = ca.getStatePos(lastPos)
       var newStatePos = ca.getStatePos(pos)
 
-      ca.offset[0] += Math.round(oldStatePos[0] - newStatePos[0])
-      ca.offset[1] += Math.round(oldStatePos[1] - newStatePos[1])
+      ca.offset[0] += oldStatePos[0] - newStatePos[0]
+      ca.offset[1] += oldStatePos[1] - newStatePos[1]
 
       ca.draw();
     }
@@ -411,21 +418,25 @@ function main() {
   })
 
   canvas.addEventListener("wheel", event => {
-    const delta = Math.sign(event.deltaY);
-    var scaleDelta = 0.0;
-    if (delta > 0 && ca.scale < 16)
-      scaleDelta = 0.5;
+    // prevent blurry page zoom with ctrl + mwheel
+    if(event.ctrlKey)
+      event.preventDefault()
+    
+    const delta = -Math.sign(event.deltaY);
+    var scaleMult = 1;
+    if (delta > 0 && ca.scale < 64)
+      scaleMult = 2.0;
 
-    if (delta < 0 && ca.scale > 1)
-      scaleDelta = -0.5;
+    if (delta < 0 && ca.scale > 0.25)
+      scaleMult = 0.5;
 
     var oldStatePos = ca.getStatePos(lastPos)
-    ca.scale += scaleDelta;
+    ca.scale *= scaleMult;
     var newStatePos = ca.getStatePos(lastPos)
 
-    // offset so the zoom's origin matches the mouse location
-    ca.offset[0] += Math.round(oldStatePos[0] - newStatePos[0])
-    ca.offset[1] += Math.round(oldStatePos[1] - newStatePos[1])
+    // offset so the zoom's origin matches the current mouse location
+    ca.offset[0] += oldStatePos[0] - newStatePos[0]
+    ca.offset[1] += oldStatePos[1] - newStatePos[1]
 
     ca.draw();
   });

@@ -21,14 +21,14 @@
         border-color:#000;
         vertical-align:top;
         padding:10px;}
-      html {height: 100vh}  /*otherwise it will have a white space at the bottom*/
-      body { margin: 0px; height: 100%;  overflow: hidden;}
-      canvas { display: block;  height: 1080px ; width: 1920px; margin: 0px; }
+      html {height: 100vh, margin: 0px;}  /*otherwise it will have a white space at the bottom*/
+      body { margin: 0px; height: 100vh;  overflow: hidden;}
+      canvas { display: block;  height: 100% ; width: 100%; margin: 0px; }
     </style>
   </head>
   <body>
     <!-- Canvas dimensions must be powers of two. -->
-      <div class="floatingDiv" id="helpBox"">
+<!--       <div class="floatingDiv" id="helpBox"">
         <h1>CONTROLS</h1>
 
         [esc]: show / hide help <br>
@@ -43,7 +43,7 @@
         <mark>[h]: toggle history shader <br></mark>
         <mark>[1]...[9]: change brush size<br></mark>
         [F11]: fullscreen
-      </div>
+      </div> -->
       <canvas id="glCanvas"></canvas>  
   </body>
 </html>
